@@ -72,16 +72,17 @@ const styles = StyleSheet.create({
   // 테이블
   table: {
     width: '100%',
+    border: '0.8px solid #BDBDBD',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#E8F4F8',
-    borderTop: '0.3px solid #CFD8DC',
-    borderBottom: '0.3px solid #CFD8DC',
+    borderBottom: '0.5px solid #CFD8DC',
   },
   tableRow: {
     flexDirection: 'row',
-    borderBottom: '0.3px solid #E0E0E0',
+    borderBottom: '0.5px solid #E0E0E0',
   },
   tableRowEven: {
     backgroundColor: '#FAFAFA',
@@ -93,8 +94,7 @@ const styles = StyleSheet.create({
   cell: {
     padding: '5 4',
     fontSize: 9,
-    borderLeft: '0.3px solid #E0E0E0',
-    borderRight: '0.3px solid #E0E0E0',
+    borderRight: '0.5px solid #E0E0E0',
   },
   cellHeader: {
     padding: '6 4',
@@ -102,6 +102,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     color: '#37474F',
+    borderRight: '0.5px solid #E0E0E0',
+  },
+  cellFirst: {
+    borderLeft: 'none',
+  },
+  cellLast: {
+    borderRight: 'none',
   },
   // 열별 너비
   colBarcode: { width: '12%' },
@@ -130,7 +137,6 @@ export default function WorkOrderPdfDocument({ rows }: WorkOrderPdfDocumentProps
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.receivedDate}>입고날짜 : {receivedDate}</Text>
-            <Text style={styles.subtitle}>작업 지시서</Text>
           </View>
           <View style={styles.headerRight}>
             <View style={styles.checkboxItem}>
@@ -148,7 +154,7 @@ export default function WorkOrderPdfDocument({ rows }: WorkOrderPdfDocumentProps
         <View style={styles.table}>
           {/* 테이블 헤더 */}
           <View style={styles.tableHeader}>
-            <Text style={[styles.cellHeader, styles.colBarcode]}>바코드번호</Text>
+            <Text style={[styles.cellHeader, styles.cellFirst, styles.colBarcode]}>바코드번호</Text>
             <Text style={[styles.cellHeader, styles.colProduct]}>제품명</Text>
             <Text style={[styles.cellHeader, styles.colColor]}>컬러</Text>
             <Text style={[styles.cellHeader, styles.colSize]}>사이즈</Text>
@@ -166,7 +172,7 @@ export default function WorkOrderPdfDocument({ rows }: WorkOrderPdfDocumentProps
             <Text style={[styles.cellHeader, styles.colSum]}>합계</Text>
             <Text style={[styles.cellHeader, styles.colDefect]}>불량</Text>
             <Text style={[styles.cellHeader, styles.colOutbound]}>출고일</Text>
-            <Text style={[styles.cellHeader, styles.colManufacturer]}>제조사</Text>
+            <Text style={[styles.cellHeader, styles.cellLast, styles.colManufacturer]}>제조사</Text>
           </View>
 
           {/* 테이블 바디 */}
@@ -178,7 +184,7 @@ export default function WorkOrderPdfDocument({ rows }: WorkOrderPdfDocumentProps
                 index % 2 === 0 ? styles.tableRowOdd : styles.tableRowEven,
               ]}
             >
-              <Text style={[styles.cell, styles.colBarcode]}>{row.barcode}</Text>
+              <Text style={[styles.cell, styles.cellFirst, styles.colBarcode]}>{row.barcode}</Text>
               <Text style={[styles.cell, styles.colProduct]}>{row.productName}</Text>
               <Text style={[styles.cell, styles.colColor]}>{row.color}</Text>
               <Text style={[styles.cell, styles.colSize]}>{row.size}</Text>
@@ -196,7 +202,7 @@ export default function WorkOrderPdfDocument({ rows }: WorkOrderPdfDocumentProps
               <Text style={[styles.cell, styles.colSum]}></Text>
               <Text style={[styles.cell, styles.colDefect]}></Text>
               <Text style={[styles.cell, styles.colOutbound]}>{row.outboundDate || ''}</Text>
-              <Text style={[styles.cell, styles.colManufacturer]}>{row.manufacturer}</Text>
+              <Text style={[styles.cell, styles.cellLast, styles.colManufacturer]}>{row.manufacturer}</Text>
             </View>
           ))}
         </View>
