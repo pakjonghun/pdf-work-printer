@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium/build/index.js';
+import chromium from '@sparticuz/chromium-min';
 import { type WorkOrderRow } from '@/types/work-order';
 
 /**
