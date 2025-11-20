@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
+import chromium from '@sparticuz/chromium/build/index.js';
 import { type WorkOrderRow } from '@/types/work-order';
 
 /**
@@ -19,18 +19,30 @@ export async function generatePDF(rows: WorkOrderRow[]): Promise<Buffer> {
     if (isVercel) {
       // Vercel 환경: chromium 사용
       browser = await puppeteer.launch({
-        args: chromium.args,
-        defaultViewport: {
-          width: 1920,
-          height: 1080,
-        },
+        args: [
+          ...chromium.args,
+          '--disable-gpu',
+          '--single-process',
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-web-security',
+          '--disable-features=IsolateOrigins,site-per-process',
+        ],
+        defaultViewport: chromium.defaultViewport,
         executablePath: await chromium.executablePath(),
-        headless: true,
+        headless: chromium.headless,
       });
     } else {
-      // 로컬 환경: 시스템 Chrome 사용
+      // 로컬 환경: 시스템 Chrome 사용 (속도 최적화)
       browser = await puppeteer.launch({
         headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+        ],
         executablePath:
           process.platform === 'darwin'
             ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
@@ -42,9 +54,9 @@ export async function generatePDF(rows: WorkOrderRow[]): Promise<Buffer> {
 
     const page = await browser.newPage();
 
-    // HTML 설정
+    // HTML 설정 (속도 최적화)
     await page.setContent(html, {
-      waitUntil: 'networkidle0',
+      waitUntil: 'domcontentloaded', // networkidle0 → domcontentloaded로 변경 (더 빠름)
     });
 
     // PDF 생성 (가로 방향)
@@ -59,6 +71,7 @@ export async function generatePDF(rows: WorkOrderRow[]): Promise<Buffer> {
         left: '8mm',
       },
       displayHeaderFooter: false,
+      preferCSSPageSize: true, // CSS @page 규칙 사용
     });
 
     return Buffer.from(pdfBuffer);
@@ -131,8 +144,8 @@ function generateHTMLTemplate(rows: WorkOrderRow[]): string {
     html, body {
       font-family: 'Noto Sans KR', 'Malgun Gothic', '맑은 고딕', sans-serif;
       color: #1a1a1a;
-      font-size: 10px;
-      line-height: 1.6;
+      font-size: 9px;
+      line-height: 1.5;
       background: #fff;
     }
 
@@ -154,31 +167,34 @@ function generateHTMLTemplate(rows: WorkOrderRow[]): string {
     }
 
     .meta-left {
-      font-size: 14px;
+      font-size: 12px;
       font-weight: 700;
       color: #1a1a1a;
     }
 
     .meta-right {
       display: flex;
-      gap: 12px;
+      gap: 20px;
       align-items: center;
     }
 
     .checkbox-item {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 6px;
-      font-size: 11px;
+      gap: 5px;
+      font-size: 10px;
       color: #555;
       font-weight: 500;
+      vertical-align: middle;
     }
 
     .checkbox-item::before {
       content: '□';
-      font-size: 16px;
+      font-size: 13px;
       color: #90A4AE;
       font-weight: 400;
+      vertical-align: middle;
+      margin-top: -1px;
     }
 
     /* ========================================
@@ -207,25 +223,26 @@ function generateHTMLTemplate(rows: WorkOrderRow[]): string {
       background: #E8F4F8;
       color: #37474F;
       border: 0.5px solid #CFD8DC;
-      padding: 8px 4px;
+      padding: 7px 4px;
       font-weight: 600;
       text-align: center;
-      font-size: 11px;
+      font-size: 9.5px;
       white-space: nowrap;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.2px;
     }
 
     /* ========================================
        테이블 바디
        ======================================== */
     .work-order-table td {
-      border: 1px solid #E0E0E0;
-      padding: 7px 6px;
-      font-size: 10.5px;
+      border: 0.5px solid #E0E0E0;
+      padding: 6px 5px;
+      font-size: 9px;
       color: #424242;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      vertical-align: middle;
     }
 
     /* Zebra striping */
@@ -246,7 +263,7 @@ function generateHTMLTemplate(rows: WorkOrderRow[]): string {
        ======================================== */
     .cell-text {
       text-align: left;
-      padding-left: 8px;
+      padding-left: 6px;
     }
 
     .cell-product {
@@ -254,8 +271,8 @@ function generateHTMLTemplate(rows: WorkOrderRow[]): string {
       color: #212121;
       white-space: normal !important;
       word-wrap: break-word;
-      line-height: 1.4;
-      max-height: 2.8em;
+      line-height: 1.3;
+      max-height: 2.6em;
       overflow: hidden;
     }
 
@@ -263,14 +280,14 @@ function generateHTMLTemplate(rows: WorkOrderRow[]): string {
       text-align: right;
       font-weight: 600;
       color: #424242;
-      padding-right: 8px;
+      padding-right: 6px;
     }
 
     .cell-qty-narrow {
       width: 22px;
       text-align: center;
       background: #F0F8FF;
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 500;
     }
 
@@ -280,7 +297,7 @@ function generateHTMLTemplate(rows: WorkOrderRow[]): string {
       text-align: right;
       width: 50px;
       color: #37474F;
-      padding-right: 8px;
+      padding-right: 6px;
     }
 
     /* ========================================
@@ -323,7 +340,7 @@ function generateHTMLTemplate(rows: WorkOrderRow[]): string {
     .work-order-table th:nth-child(14),
     .work-order-table th:nth-child(15) {
       width: 22px;
-      font-size: 9px;
+      font-size: 8px;
     }
 
     .work-order-table th:nth-child(16),

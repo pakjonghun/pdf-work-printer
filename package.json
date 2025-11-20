@@ -9,9 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@sparticuz/chromium": "^141.0.0",
+    "@sparticuz/chromium": "^131.0.0",
     "next": "16.0.3",
-    "puppeteer-core": "^10.4.0",
+    "puppeteer-core": "^23.10.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "xlsx": "^0.18.5"

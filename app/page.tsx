@@ -13,15 +13,18 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /**
-   * 파일 선택 핸들러
+   * 파일 선택 핸들러 - 즉시 업로드 및 PDF 생성
    */
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       setFile(selectedFile);
       setParsedData(null);
       setError(null);
       setDownloadStatus('');
+
+      // 즉시 PDF 생성 및 다운로드
+      await processFile(selectedFile);
     }
   };
 
@@ -45,7 +48,7 @@ export default function Home() {
     e.stopPropagation();
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
@@ -59,6 +62,9 @@ export default function Home() {
         setParsedData(null);
         setError(null);
         setDownloadStatus('');
+
+        // 즉시 PDF 생성 및 다운로드
+        await processFile(droppedFile);
       } else {
         setError('엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.');
       }
@@ -66,14 +72,9 @@ export default function Home() {
   };
 
   /**
-   * 파일 업로드 및 PDF 자동 다운로드
+   * 파일 처리 및 PDF 자동 다운로드
    */
-  const handleUpload = async () => {
-    if (!file) {
-      setError('파일을 선택해주세요.');
-      return;
-    }
-
+  const processFile = async (selectedFile: File) => {
     setLoading(true);
     setError(null);
     setDownloadStatus('');
@@ -82,7 +83,7 @@ export default function Home() {
       // 1. 파일 업로드 및 파싱
       setDownloadStatus('파일 업로드 중...');
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', selectedFile);
 
       const uploadResponse = await fetch('/api/upload', {
         method: 'POST',
@@ -168,7 +169,7 @@ export default function Home() {
           <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-3">
             작업 지시서 생성기
           </h1>
-          <p className="text-lg text-gray-600">엑셀 파일 업로드 시 자동으로 PDF 다운로드</p>
+          <p className="text-lg text-gray-600">엑셀 파일을 업로드하면 즉시 PDF가 다운로드됩니다</p>
         </div>
 
         {/* 메인 카드 */}
@@ -230,26 +231,6 @@ export default function Home() {
                   파일 선택
                 </label>
               </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              {file && (
-                <p className="flex-1 text-sm text-gray-600 flex items-center">
-                  <svg className="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  선택된 파일: <strong className="ml-1">{file.name}</strong>
-                </p>
-              )}
-              <button
-                onClick={handleUpload}
-                disabled={!file || loading}
-                className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg
-                  hover:from-green-600 hover:to-emerald-600 disabled:from-gray-300 disabled:to-gray-400
-                  disabled:cursor-not-allowed transition-all font-semibold whitespace-nowrap
-                  shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                {loading ? '처리중...' : 'PDF 생성'}
-              </button>
             </div>
           </div>
 
@@ -343,8 +324,8 @@ export default function Home() {
                   d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                 />
               </svg>
-              <p className="text-base font-medium mb-2">엑셀 파일을 선택하고 PDF 생성 버튼을 눌러주세요</p>
-              <p className="text-sm text-gray-400">PDF 파일이 자동으로 다운로드됩니다</p>
+              <p className="text-base font-medium mb-2">엑셀 파일을 드래그하거나 선택해주세요</p>
+              <p className="text-sm text-gray-400">업로드 즉시 PDF가 자동으로 다운로드됩니다</p>
             </div>
           )}
         </div>
