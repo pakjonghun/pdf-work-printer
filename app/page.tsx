@@ -1,159 +1,23 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { type WorkOrderRow, type ParseResponse, type GenerateResponse } from '@/types/work-order';
+import { useState } from 'react';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import { type WorkOrderRow } from '@/types/work-order';
+import ExcelUpload from '@/components/ExcelUpload';
+import WorkOrderPdfDocument from '@/pdf/WorkOrderPdfDocument';
 
 export default function Home() {
-  const [file, setFile] = useState<File | null>(null);
-  const [parsedData, setParsedData] = useState<WorkOrderRow[] | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<WorkOrderRow[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [downloadStatus, setDownloadStatus] = useState<string>('');
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /**
-   * 파일 선택 핸들러 - 즉시 업로드 및 PDF 생성
-   */
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      setParsedData(null);
-      setError(null);
-      setDownloadStatus('');
-
-      // 즉시 PDF 생성 및 다운로드
-      await processFile(selectedFile);
-    }
-  };
-
-  /**
-   * 드래그 앤 드롭 핸들러
-   */
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    const droppedFile = e.dataTransfer.files?.[0];
-    if (droppedFile) {
-      // 엑셀 파일 확인
-      const isExcel = droppedFile.name.endsWith('.xlsx') || droppedFile.name.endsWith('.xls');
-      if (isExcel) {
-        setFile(droppedFile);
-        setParsedData(null);
-        setError(null);
-        setDownloadStatus('');
-
-        // 즉시 PDF 생성 및 다운로드
-        await processFile(droppedFile);
-      } else {
-        setError('엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.');
-      }
-    }
-  };
-
-  /**
-   * 파일 처리 및 PDF 자동 다운로드
-   */
-  const processFile = async (selectedFile: File) => {
-    setLoading(true);
+  const handleDataParsed = (parsedRows: WorkOrderRow[]) => {
+    setRows(parsedRows);
     setError(null);
-    setDownloadStatus('');
-
-    try {
-      // 1. 파일 업로드 및 파싱
-      setDownloadStatus('파일 업로드 중...');
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-
-      const uploadResponse = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const uploadResult: ParseResponse = await uploadResponse.json();
-
-      if (!uploadResult.success || !uploadResult.data) {
-        setError(uploadResult.error || '파일 업로드에 실패했습니다.');
-        setLoading(false);
-        return;
-      }
-
-      const parsedRows = uploadResult.data;
-      setParsedData(parsedRows);
-
-      // 2. PDF 생성 및 다운로드
-      setDownloadStatus('PDF 파일 생성 중...');
-      const pdfResponse = await fetch('/api/generate-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: parsedRows }),
-      });
-
-      const pdfResult: GenerateResponse = await pdfResponse.json();
-
-      if (pdfResult.success && pdfResult.data && pdfResult.filename) {
-        downloadFile(pdfResult.data, pdfResult.filename, 'pdf');
-        setDownloadStatus('PDF 다운로드 완료!');
-
-        // 파일 인풋 초기화 (같은 파일 재업로드 가능하게)
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-        setFile(null);
-      }
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '처리 중 오류가 발생했습니다.');
-      setDownloadStatus('');
-    } finally {
-      setLoading(false);
-    }
   };
 
-  /**
-   * Base64 데이터를 파일로 다운로드
-   */
-  const downloadFile = (base64Data: string, filename: string, type: 'excel' | 'pdf') => {
-    const byteCharacters = atob(base64Data);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-
-    const mimeType = type === 'excel'
-      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      : 'application/pdf';
-
-    const blob = new Blob([byteArray], { type: mimeType });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+  const handleError = (errorMessage: string) => {
+    setError(errorMessage);
+    setRows([]);
   };
 
   return (
@@ -169,77 +33,13 @@ export default function Home() {
           <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-3">
             작업 지시서 생성기
           </h1>
-          <p className="text-lg text-gray-600">엑셀 파일을 업로드하면 즉시 PDF가 다운로드됩니다</p>
+          <p className="text-lg text-gray-600">엑셀 파일을 업로드하고 PDF로 다운로드하세요</p>
         </div>
 
         {/* 메인 카드 */}
         <div className="bg-white shadow-2xl rounded-2xl p-8 border border-gray-100">
-          {/* 파일 업로드 영역 */}
-          <div className="mb-8">
-            <label
-              htmlFor="file-upload"
-              className="block text-sm font-semibold text-gray-700 mb-3"
-            >
-              엑셀 파일 선택
-            </label>
-            <div
-              className={`border-2 border-dashed rounded-xl p-6 mb-4 transition-all ${
-                isDragging
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-300 bg-gray-50 hover:border-gray-400'
-              }`}
-              onDragEnter={handleDragEnter}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <div className="text-center">
-                <svg
-                  className={`mx-auto h-12 w-12 mb-3 transition-colors ${
-                    isDragging ? 'text-blue-500' : 'text-gray-400'
-                  }`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
-                <p className="text-sm text-gray-600 mb-2">
-                  {isDragging ? '파일을 여기에 놓으세요' : '파일을 드래그하거나 클릭하여 선택'}
-                </p>
-                <input
-                  ref={fileInputRef}
-                  id="file-upload"
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleFileChange}
-                  disabled={loading}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="file-upload"
-                  className="inline-block px-6 py-2 bg-gradient-to-r from-blue-500 to-indigo-500
-                    text-white rounded-lg text-sm font-semibold cursor-pointer
-                    hover:from-blue-600 hover:to-indigo-600 transition-all shadow-md
-                    disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  파일 선택
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* 진행 상태 */}
-          {downloadStatus && (
-            <div className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
-              <p className="text-sm font-medium text-blue-800">{downloadStatus}</p>
-            </div>
-          )}
+          {/* 엑셀 업로드 */}
+          <ExcelUpload onDataParsed={handleDataParsed} onError={handleError} />
 
           {/* 에러 메시지 */}
           {error && (
@@ -249,7 +49,7 @@ export default function Home() {
           )}
 
           {/* 데이터 프리뷰 */}
-          {parsedData && (
+          {rows.length > 0 && (
             <div>
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-4">
@@ -261,12 +61,12 @@ export default function Home() {
                     데이터 프리뷰
                   </h2>
                   <span className="px-4 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-semibold">
-                    {parsedData.length}개 품목
+                    {rows.length}개 품목
                   </span>
                 </div>
                 <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-5 max-h-80 overflow-y-auto border border-gray-200 shadow-inner">
                   <div className="text-sm text-gray-700 mb-3 font-medium">
-                    <strong>입고날짜:</strong> {parsedData[0]?.receivedDate}
+                    <strong>입고날짜:</strong> {rows[0]?.receivedDate}
                   </div>
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-xs border border-gray-300 rounded-lg overflow-hidden">
@@ -283,7 +83,7 @@ export default function Home() {
                         </tr>
                       </thead>
                       <tbody className="bg-white">
-                        {parsedData.slice(0, 10).map((row, idx) => (
+                        {rows.slice(0, 10).map((row, idx) => (
                           <tr key={idx} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
                             <td className="px-3 py-2 text-gray-600">{idx + 1}</td>
                             <td className="px-3 py-2 font-mono text-gray-800">{row.barcode}</td>
@@ -297,19 +97,30 @@ export default function Home() {
                         ))}
                       </tbody>
                     </table>
-                    {parsedData.length > 10 && (
+                    {rows.length > 10 && (
                       <p className="text-xs text-gray-500 mt-3 text-center">
-                        ...외 <strong>{parsedData.length - 10}</strong>개 품목 (다운로드된 파일에서 전체 확인 가능)
+                        ...외 <strong>{rows.length - 10}</strong>개 품목 (PDF에서 전체 확인 가능)
                       </p>
                     )}
                   </div>
                 </div>
               </div>
+
+              {/* PDF 다운로드 버튼 */}
+              <PDFDownloadLink
+                document={<WorkOrderPdfDocument rows={rows} />}
+                fileName={`work-order-${rows[0]?.receivedDate || 'document'}.pdf`}
+                className="block w-full py-3 bg-gradient-to-r from-green-500 to-emerald-500
+                  text-white rounded-lg font-semibold shadow-lg text-center
+                  hover:from-green-600 hover:to-emerald-600 transition-all"
+              >
+                {({ loading }) => (loading ? 'PDF 생성 중...' : 'PDF 다운로드')}
+              </PDFDownloadLink>
             </div>
           )}
 
           {/* 안내 메시지 */}
-          {!parsedData && !error && !loading && (
+          {rows.length === 0 && !error && (
             <div className="text-center text-gray-500 py-12">
               <svg
                 className="mx-auto h-16 w-16 text-gray-400 mb-4"
@@ -324,8 +135,8 @@ export default function Home() {
                   d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                 />
               </svg>
-              <p className="text-base font-medium mb-2">엑셀 파일을 드래그하거나 선택해주세요</p>
-              <p className="text-sm text-gray-400">업로드 즉시 PDF가 자동으로 다운로드됩니다</p>
+              <p className="text-base font-medium mb-2">엑셀 파일을 선택해주세요</p>
+              <p className="text-sm text-gray-400">작업 지시서 PDF를 생성할 수 있습니다</p>
             </div>
           )}
         </div>
@@ -342,9 +153,9 @@ export default function Home() {
             <span className="text-gray-400">|</span>
             <span className="flex items-center">
               <svg className="w-4 h-4 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
-              자동 다운로드
+              클라이언트 PDF 생성
             </span>
           </div>
         </div>
