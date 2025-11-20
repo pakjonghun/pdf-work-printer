@@ -1,5 +1,5 @@
 import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium-min';
+import chromium from '@sparticuz/chromium';
 import { type WorkOrderRow } from '@/types/work-order';
 
 /**
@@ -17,24 +17,17 @@ export async function generatePDF(rows: WorkOrderRow[]): Promise<Buffer> {
 
   try {
     if (isVercel) {
-      // Vercel 환경: chromium 사용
+      // Vercel 환경: @sparticuz/chromium 사용
+      const executablePath = await chromium.executablePath();
+
       browser = await puppeteer.launch({
-        args: [
-          ...chromium.args,
-          '--disable-gpu',
-          '--single-process',
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process',
-        ],
+        args: chromium.args,
         defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath(),
+        executablePath,
         headless: chromium.headless,
       });
     } else {
-      // 로컬 환경: 시스템 Chrome 사용 (속도 최적화)
+      // 로컬 환경: 시스템 Chrome 사용
       browser = await puppeteer.launch({
         headless: true,
         args: [
